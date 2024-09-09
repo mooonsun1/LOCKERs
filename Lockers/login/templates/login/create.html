@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% load django_bootstrap5 %}
+{% load widget_tweaks %}
+
+{% block title %}가입{%endblock title%}
+{% block contents %}
+<style>
+    .form-container {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+    }
+    .form-title {
+        margin-bottom: 20px;
+    }
+    .form-label {
+        font-weight: bold;
+    }
+    .btn-custom {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+    }
+    .btn-check {
+        margin-top: 10px;
+    }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-container">
+                <h2 class="text-center form-title">회원가입</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    <!-- 아이디 입력 필드와 중복 확인 버튼 -->
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">아이디</label>
+                        <div class="input-group">
+                            {{ form.username|add_class:"form-control" }}
+                            <button type="button" id="check_username_btn" class="btn btn-secondary">중복 확인</button>
+                        </div>
+                        <div id="username_feedback" class="mt-2"></div>
+                    </div>
+                    {% bootstrap_field form.password1 %}
+                    {% bootstrap_field form.password2 %}
+                    {% bootstrap_field form.name %}
+                    {% bootstrap_field form.email %}
+                    {% bootstrap_field form.phone %}
+                    
+                    <!-- 저장 버튼 -->
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-custom">가입</button>
+                    </div>
+                    <div class="mt-3">
+                        <button type="reset" class="btn btn-custom">초기화</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- jQuery 및 AJAX 코드 추가 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#check_username_btn').click(function() {
+            var username = $('#{{ form.username.id_for_label }}').val();
+            if(username) {
+                $.ajax({
+                    url: '{% url "login:check_username" %}',
+                    data: {
+                        'username': username
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.is_taken) {
+                            $('#username_feedback').html('<span style="color: red;">' + data.error_message + '</span>');
+                        } else {
+                            $('#username_feedback').html('<span style="color: green;">사용 가능한 아이디입니다.</span>');
+                        }
+                    }
+                });
+            } else {
+                $('#username_feedback').html('<span style="color: red;">아이디를 입력하세요.</span>');
+            }
+        });
+    });
+</script>
+{% endblock contents %}

@@ -1,0 +1,75 @@
+{% extends 'llayout.html' %}
+{% load humanize %}
+
+{% block title %}결제 수단 선택{% endblock %}
+
+{% block contents %}
+    <h1 class="text-center mb-4">결제 수단 선택</h1>
+
+    <form id="paymentForm" method="post">
+        {% csrf_token %}
+
+        {% if error_message %}
+            <div class="alert alert-warning" id="error-message">
+                {{ error_message }}
+            </div>
+        {% endif %}
+
+        <div class="form-group">
+            {% if registered_cards %}
+                <div class="card mt-4 p-3" style="background-color: #f0f8ff;">
+                    <h5>등록된 카드</h5>
+                    {% for card in registered_cards %}
+                        <div class="form-check">
+                            <input type="radio" id="card_{{ card.id }}" name="selected_card" value="{{ card.id }}" class="form-check-input">
+                            <label for="card_{{ card.id }}" class="form-check-label">
+                                {{ card.card_number|slice:"0:4" }} **** **** {{ card.card_number|slice:"-4:" }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning mt-4">
+                    등록된 카드가 없습니다. 결제를 진행하려면 <a href="{% url 'payments:add_card' %}">카드를 추가</a>해 주세요.
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{% url 'payments:add_card' %}" class="btn btn-link">+ 카드 추가</a>
+        </div>
+
+        <div class="form-group mt-4">
+            <label for="amount">총 대여 요금:</label>
+            <h3 id="amount">{{ amount|intcomma}}원</h3>
+
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">결제하기 ({{ amount|intcomma}}원)</button>
+        </div>
+    </form>
+
+    <script>
+        document.querySelector('#paymentForm').addEventListener('submit', function(event) {
+            const selectedCard = document.querySelector('input[name="selected_card"]:checked');
+            const errorMessageDiv = document.getElementById('error-message');
+
+            if (!selectedCard) {
+                event.preventDefault(); // Prevent form submission
+                const errorMessage = '카드를 선택해 주세요.';
+                if (errorMessageDiv) {
+                    errorMessageDiv.innerHTML = `<div class="alert alert-warning">${errorMessage}</div>`;
+                } else {
+                    const form = document.querySelector('#paymentForm');
+                    form.insertAdjacentHTML('beforebegin', `<div class="alert alert-warning">${errorMessage}</div>`);
+                }
+            } else {
+                // Clear any previous error messages
+                if (errorMessageDiv) {
+                    errorMessageDiv.style.display = 'none';
+                }
+            }
+        });
+    </script>
+{% endblock %}

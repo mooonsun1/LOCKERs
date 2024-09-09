@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>현장 지도화면</title>
+    <style>
+        /* 기본 스타일 설정 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', dotum, '돋움', sans-serif;
+            font-size: 12px;
+            overflow: hidden; /* 스크롤바를 숨기기 위해 설정 */
+        }
+
+        .map_wrap {
+            display: flex;
+            height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative; /* 자식 요소 위치 지정에 필요 */
+        }
+
+        #overlayText {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            color: blue;
+            border-radius: 5px;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        #mainText {
+            position: absolute;
+            top: 10px;
+            left: 10px; /* 왼쪽으로 이동 */
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            color: blue;
+            border-radius: 5px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            cursor: pointer; /* 커서를 포인터로 변경 */
+        }
+
+        #centerText {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            color: blue;
+            border-radius: 5px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        #map {
+            position : relative;
+            width: 75vw; /* 지도 너비를 화면 너비의 75%로 설정 */
+            height: 80%; /* 지도 높이를 100%로 설정 */
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin:auto;
+        }
+
+        #menu_wrap {
+            position: relative;
+            width: 25vw; /* 메뉴 너비를 화면 너비의 25%로 설정 */
+            height: 80%; /* 메뉴 높이를 100%로 설정*/
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            margin-right: 0px; /* 지도가 메뉴와 겹치지 않도록 여백 추가 */
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            overflow-y: auto; /* 스크롤 추가 */
+            margin:auto;
+        }
+
+        #menu_wrap .option {
+            margin-bottom: 10px;
+        }
+
+        #menu_wrap .option form {
+            display: flex;
+            align-items: center;
+        }
+
+        #menu_wrap .option form input[type="text"] {
+            flex: 1;
+            margin-right: 5px;
+        }
+
+        #menu_wrap .option form button {
+            flex-shrink: 0;
+        }
+
+        #menu_wrap hr {
+            margin: 10px 0;
+            border: 0;
+            border-top: 2px solid #5F5F5F;
+        }
+
+        #placesList li {
+            list-style: none;
+        }
+
+        #placesList .item {
+            position: relative;
+            border-bottom: 1px solid #888;
+            overflow: hidden;
+            cursor: pointer;
+            min-height: 65px;
+        }
+
+        #placesList .item span {
+            display: block;
+            margin-top: 4px;
+        }
+
+        #placesList .item h5,
+        #placesList .item .info {
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        #placesList .item .info {
+            padding: 10px 0 10px 55px;
+        }
+
+        #placesList .info .gray {
+            color: #8a8a8a;
+        }
+
+        #placesList .info .jibun {
+            padding-left: 26px;
+            background: url(https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/places_jibun.png) no-repeat;
+        }
+
+        #placesList .info .tel {
+            color: #009900;
+        }
+
+        #placesList .item .markerbg {
+            float: left;
+            position: absolute;
+            width: 36px;
+            height: 37px;
+            margin: 10px 0 0 10px;
+            background: url(https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png) no-repeat;
+        }
+
+        #pagination {
+            margin: 10px auto;
+            text-align: center;
+        }
+
+        #pagination a {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        #pagination .on {
+            font-weight: bold;
+            cursor: default;
+            color: #777;
+        }
+
+        .background-image {
+            background-image: url('static/imgs/main_img.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        #placesList .item .marker_1 {background-position: 0 -10px;}
+        #placesList .item .marker_2 {background-position: 0 -56px;}
+        #placesList .item .marker_3 {background-position: 0 -102px}
+        #placesList .item .marker_4 {background-position: 0 -148px;}
+        #placesList .item .marker_5 {background-position: 0 -194px;}
+        #placesList .item .marker_6 {background-position: 0 -240px;}
+        #placesList .item .marker_7 {background-position: 0 -286px;}
+        #placesList .item .marker_8 {background-position: 0 -332px;}
+        #placesList .item .marker_9 {background-position: 0 -378px;}
+        #placesList .item .marker_10 {background-position: 0 -423px;}
+        #placesList .item .marker_11 {background-position: 0 -470px;}
+        #placesList .item .marker_12 {background-position: 0 -516px;}
+        #placesList .item .marker_13 {background-position: 0 -562px;}
+        #placesList .item .marker_14 {background-position: 0 -608px;}
+        #placesList .item .marker_15 {background-position: 0 -654px;}
+
+    </style>
+</head>
+<body>
+<div class="map_wrap">
+    <div id="menu_wrap" class="bg_white">
+        <div class="option">
+            <form onsubmit="searchPlaces(); return false;">
+                <label for="keyword">키워드:</label>
+                <input type="text" value="{{ keyword }}" id="keyword" size="15">
+                <button type="submit">검색하기</button>
+            </form>
+        </div>
+        <hr>
+        <ul id="placesList"></ul>
+        <div id="pagination"></div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<div id="overlayText" class="weather-info">Loading weather...</div>
+
+<!-- 왼쪽으로 이동한 Lockers 버튼 -->
+<a href="/" id="mainText" class="button">Lockers</a>
+
+<!-- 중앙에 표시할 텍스트 -->
+<div id="centerText">{{ age }}, {{ gender }}에게 추천하는 장소입니다. {{ user_id }}님 여기 어때요~?</div>
+
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=b7a0856b49b8bb457a6fffff4a4d7ad4&libraries=services"></script>
+<script>
+// 마커를 담을 배열입니다
+var markers = [];
+
+// 마커와 장소 정보를 매핑할 객체
+var markerMap = {}; 
+
+// 지도를 표시할 div 
+var mapContainer = document.getElementById('map'); 
+
+// 지도 객체 생성 및 초기화
+var map;
+
+// 장소 검색 객체를 생성합니다
+var ps = new kakao.maps.services.Places();  
+
+// 검색 결과 목록이나 마커를 클릭했을 때 장소명을 표출할 인포윈도우를 생성합니다
+var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+
+// 현재 위치 기반으로 지도 중심 설정
+function setCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            var locPosition = new kakao.maps.LatLng(lat, lng);
+
+            var mapOption = {
+                center: locPosition, // 지도의 중심좌표
+                level: 3 // 지도의 확대 레벨
+            };  
+
+            // 지도를 생성합니다    
+            map = new kakao.maps.Map(mapContainer, mapOption); 
+
+            // 현재 위치에 마커를 표시합니다
+            var marker = new kakao.maps.Marker({
+                position: locPosition
+            });
+            marker.setMap(map);
+
+            // 현재 위치를 중심으로 지도 범위를 재설정합니다
+            map.setCenter(locPosition);
+
+            // 검색을 자동으로 수행합니다
+            searchPlaces();
+        }, function(error) {
+            alert('현재 위치 정보를 가져올 수 없습니다. ' + error.message);
+            // 기본 위치로 설정
+            var defaultLocation = new kakao.maps.LatLng(37.566826, 126.9786567);
+            var mapOption = {
+                center: defaultLocation, // 지도의 중심좌표
+                level: 3 // 지도의 확대 레벨
+            };  
+
+            // 지도를 생성합니다    
+            map = new kakao.maps.Map(mapContainer, mapOption);
+        });
+    } else {
+        alert('이 브라우저는 지오로케이션을 지원하지 않습니다.');
+        // 기본 위치로 설정
+        var defaultLocation = new kakao.maps.LatLng(37.566826, 126.9786567);
+        var mapOption = {
+            center: defaultLocation, // 지도의 중심좌표
+            level: 2 // 지도의 확대 레벨
+        };  
+
+        // 지도를 생성합니다    
+        map = new kakao.maps.Map(mapContainer, mapOption);
+    }
+}
+
+// 키워드로 장소를 검색합니다
+function searchPlaces() {
+    var keyword = document.getElementById('keyword').value;
+
+    if (!keyword.replace(/^\s+|\s+$/g, '')) {
+        alert('키워드를 입력해주세요!');
+        return false;
+    }
+
+    // 장소검색 객체를 통해 키워드로 장소검색을 요청합니다
+    ps.keywordSearch(keyword, placesSearchCB); 
+}
+
+// 장소검색이 완료됐을 때 호출되는 콜백함수입니다
+function placesSearchCB(data, status, pagination) {
+    if (status === kakao.maps.services.Status.OK) {
+        // 정상적으로 검색이 완료됐으면
+        // 검색 목록과 마커를 표출합니다
+        displayPlaces(data);
+
+        // 페이지 번호를 표출합니다
+        displayPagination(pagination);
+
+    } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+        alert('검색 결과가 존재하지 않습니다.');
+        return;
+
+    } else if (status === kakao.maps.services.Status.ERROR) {
+        alert('검색 결과 중 오류가 발생했습니다.');
+        return;
+    }
+}
+
+function displayPlaces(places) {
+    var listEl = document.getElementById('placesList'), 
+        menuEl = document.getElementById('menu_wrap'),
+        fragment = document.createDocumentFragment(), 
+        bounds = new kakao.maps.LatLngBounds(), 
+        listStr = '';
+    
+    // 검색 결과 목록에 추가된 항목들을 제거합니다
+    removeAllChildNods(listEl);
+
+    // 지도에 표시되고 있는 마커를 제거합니다
+    removeMarker();
+    
+    for (var i=0; i<places.length; i++) {
+        // 마커를 생성하고 지도에 표시합니다
+        var placePosition = new kakao.maps.LatLng(places[i].y, places[i].x),
+            marker = addMarker(placePosition, i), 
+            itemEl = getListItem(i, places[i]);
+
+        // 검색된 장소 위치를 기준으로 지도 범위를 재설정합니다
+        bounds.extend(placePosition);
+
+        // 검색결과 항목에 mouseover 했을 때
+        // 해당 장소에 인포윈도우에 장소명을 표시합니다
+        // mouseout 했을 때는 인포윈도우를 닫습니다
+        (function(marker, title, placePosition) {
+            kakao.maps.event.addListener(marker, 'mouseover', function() {
+                displayInfowindow(marker, title);
+            });
+
+            kakao.maps.event.addListener(marker, 'mouseout', function() {
+                infowindow.close();
+            });
+
+            itemEl.onmouseover =  function () {
+                displayInfowindow(marker, title);
+            };
+
+            itemEl.onmouseout =  function () {
+                infowindow.close();
+            };
+
+            // 검색 결과 항목을 클릭했을 때
+            itemEl.onclick = function () {
+                map.setCenter(placePosition); // 지도 중심을 해당 위치로 이동
+                map.setLevel(3); // 필요에 따라 확대 레벨 조정
+                displayInfowindow(marker, title); // 클릭 시 인포윈도우도 열기
+            };
+        })(marker, places[i].place_name, placePosition);
+
+        fragment.appendChild(itemEl);
+    }
+
+    // 검색결과 항목들을 검색결과 목록 Element에 추가합니다
+    listEl.appendChild(fragment);
+    menuEl.scrollTop = 0;
+
+    // 검색된 장소 위치를 기준으로 지도 범위를 재설정합니다
+    map.setBounds(bounds);
+}
+
+// 검색결과 항목을 Element로 반환하는 함수입니다
+function getListItem(index, places) {
+    var el = document.createElement('li'),
+    itemStr = '<span class="markerbg marker_' + (index+1) + '"></span>' +
+                '<div class="info">' +
+                '   <h5>' + places.place_name + '</h5>';
+
+    if (places.road_address_name) {
+        itemStr += '    <span>' + places.road_address_name + '</span>' +
+                    '   <span class="jibun gray">' +  places.address_name  + '</span>';
+    } else {
+        itemStr += '    <span>' +  places.address_name  + '</span>'; 
+    }
+                
+    itemStr += '  <span class="tel">' + places.phone  + '</span>' +
+                '</div>';           
+
+    el.innerHTML = itemStr;
+    el.className = 'item';
+
+    return el;
+}
+
+// 마커를 생성하고 지도 위에 마커를 표시하는 함수입니다
+function addMarker(position, idx, title) {
+    var imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png', // 마커 이미지 url, 스프라이트 이미지를 씁니다
+        imageSize = new kakao.maps.Size(36, 37),  // 마커 이미지의 크기
+        imgOptions =  {
+            spriteSize : new kakao.maps.Size(36, 691), // 스프라이트 이미지의 크기
+            spriteOrigin : new kakao.maps.Point(0, (idx*46)+10), // 스프라이트 이미지 중 사용할 영역의 좌상단 좌표
+            offset: new kakao.maps.Point(13, 37) // 마커 좌표에 일치시킬 이미지 내에서의 좌표
+        },
+        markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imgOptions),
+        marker = new kakao.maps.Marker({
+            position: position, // 마커의 위치
+            image: markerImage 
+        });
+
+    marker.setMap(map); // 지도 위에 마커를 표출합니다
+    markers.push(marker);  // 배열에 생성된 마커를 추가합니다
+
+    return marker;
+}
+
+// 지도 위에 표시되고 있는 마커를 모두 제거합니다
+function removeMarker() {
+    for (var i = 0; i < markers.length; i++) {
+        markers[i].setMap(null);
+    }   
+    markers = [];
+}
+
+// 검색결과 목록 하단에 페이지번호를 표시는 함수입니다
+function displayPagination(pagination) {
+    var paginationEl = document.getElementById('pagination'),
+        fragment = document.createDocumentFragment(),
+        i; 
+
+    // 기존에 추가된 페이지번호를 삭제합니다
+    while (paginationEl.hasChildNodes()) {
+        paginationEl.removeChild (paginationEl.lastChild);
+    }
+
+    for (i=1; i<=pagination.last; i++) {
+        var el = document.createElement('a');
+        el.href = "#";
+        el.innerHTML = i;
+
+        if (i===pagination.current) {
+            el.className = 'on';
+        } else {
+            el.onclick = (function(i) {
+                return function() {
+                    pagination.gotoPage(i);
+                }
+            })(i);
+        }
+
+        fragment.appendChild(el);
+    }
+    paginationEl.appendChild(fragment);
+}
+
+// 검색결과 목록 또는 마커를 클릭했을 때 호출되는 함수입니다
+// 인포윈도우에 장소명을 표시합니다
+function displayInfowindow(marker, title) {
+    var content = '<div style="padding:5px;z-index:1;">' + title + '</div>';
+
+    infowindow.setContent(content);
+    infowindow.open(map, marker);
+}
+
+// 검색결과 목록의 자식 Element를 제거하는 함수입니다
+function removeAllChildNods(el) {   
+    while (el.hasChildNodes()) {
+        el.removeChild (el.lastChild);
+    }
+}
+
+// 페이지 로드 시 현재 위치 기반으로 지도를 설정
+window.onload = function() {
+    setCurrentLocation();
+    fetchWeather();
+};
+
+function addOverlayText() {
+    var overlayText = document.getElementById('overlayText');
+    // 이 함수의 내용이 CSS에서 정의된 대로 스타일을 설정하는 데 사용됩니다
+}
+
+// 위도/경도를 격자 좌표로 변환하는 함수
+function latLngToGrid(lat, lng) {
+    let RE = 6371.00877; // 지구 반경(km)
+    let GRID = 5.0; // 격자 간격(km)
+    let SLAT1 = 30.0; // 투영 위도1(degree)
+    let SLAT2 = 60.0; // 투영 위도2(degree)
+    let OLON = 126.0; // 기준점 경도(degree)
+    let OLAT = 38.0; // 기준점 위도(degree)
+    let XO = 43; // 기준점 X좌표(GRID)
+    let YO = 136; // 기준점 Y좌표(GRID)
+
+    let DEGRAD = Math.PI / 180.0;
+    let RADDEG = 180.0 / Math.PI;
+
+    let re = RE / GRID;
+    let slat1 = SLAT1 * DEGRAD;
+    let slat2 = SLAT2 * DEGRAD;
+    let olon = OLON * DEGRAD;
+    let olat = OLAT * DEGRAD;
+
+    let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+    sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+    let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+    sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
+    let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+    ro = re * sf / Math.pow(ro, sn);
+    let rs = {};
+
+    let ra = Math.tan(Math.PI * 0.25 + (lat) * DEGRAD * 0.5);
+    ra = re * sf / Math.pow(ra, sn);
+    let theta = lng * DEGRAD - olon;
+    if (theta > Math.PI) theta -= 2.0 * Math.PI;
+    if (theta < -Math.PI) theta += 2.0 * Math.PI;
+    theta *= sn;
+
+    rs['nx'] = Math.floor(ra * Math.sin(theta) + XO + 0.5);
+    rs['ny'] = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
+
+    // 이전에 사용된 'script' 변수 대신 올바른 변수명을 사용합니다.
+    return rs;
+}
+
+
+async function fetchWeather() {
+    navigator.geolocation.getCurrentPosition(async function(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        const grid = latLngToGrid(lat, lng); // 위도/경도를 격자 좌표로 변환
+
+        const apiKey = 'Ov/KK7UkpoS4KR+njSJxOjQQosvtbkC8fqJhzKmSLFbSkgoSPXH+4HMJ5TmGKZBNoKC20CWaDQKYqEUs4pIXWA==';
+        const baseUrl = 'http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst';
+
+        const currentDate = new Date();
+        const baseDate = currentDate.toISOString().split('T')[0].replace(/-/g, '');
+        const baseTime = currentDate.getHours().toString().padStart(2, '0') + '00';
+
+        const params = new URLSearchParams({
+            serviceKey: apiKey,
+            pageNo: '1',
+            numOfRows: '10',
+            dataType: 'XML',
+            base_date: baseDate,
+            base_time: baseTime,
+            nx: grid.nx, // 변환된 격자 좌표 사용
+            ny: grid.ny  // 변환된 격자 좌표 사용
+        });
+        
+        try {
+            const response = await fetch(`${baseUrl}?${params}`);
+            const text = await response.text();
+            
+            console.log(text);
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(text, 'text/xml');
+            const items = xmlDoc.getElementsByTagName('item');
+
+            let temp = null;
+            let sky = null;
+
+            for (let item of items) {
+                const category = item.getElementsByTagName('category')[0].textContent;
+                const obsrValue = item.getElementsByTagName('obsrValue')[0].textContent;
+
+                if (category === 'T1H') {
+                    temp = obsrValue;
+                }
+                if (category === 'PTY') {
+                    sky = obsrValue;
+                }
+            }
+
+            const intToWeather = {
+                "0": ["맑음", "☀️"],
+                "1": ["비", "🌧️"],
+                "2": ["비/눈", "🌦️"],
+                "3": ["눈", "❄️"],
+                "5": ["빗방울", "🌦️"],
+                "6": ["빗방울눈날림", "🌧️🌨️"],
+                "7": ["눈날림", "🌨️"]
+            };
+
+            const skyDescription = sky !== null ? intToWeather[sky][0] : "정보 없음";
+            const skyEmoji = sky !== null ? intToWeather[sky][1] : "❓";
+
+            const weatherInfo = `현재 기온: ${temp !== null ? temp + '°C' : '정보 없음'}<br>현재 날씨: ${skyDescription} ${skyEmoji}`;
+
+            document.getElementById('overlayText').innerHTML = weatherInfo;
+
+        } catch (error) {
+            console.error('날씨 정보를 가져오는 데 실패했습니다:', error);
+            document.getElementById('overlayText').innerHTML = '날씨 정보를 가져오는 데 실패했습니다.';
+        }
+    }, function(error) {
+        console.error('현재 위치를 가져오는 데 실패했습니다:', error);
+        document.getElementById('overlayText').innerHTML = '현재 위치를 가져오는 데 실패했습니다.';
+    });
+}
+</script>
+</body>
+</html>

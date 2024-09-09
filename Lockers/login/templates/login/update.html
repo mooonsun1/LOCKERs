@@ -1,0 +1,53 @@
+
+{% extends 'layout.html' %}
+{% load django_bootstrap5 %}
+
+{% block title%}수정{% endblock title%}
+{% block contents %}
+<style>
+    .form-container {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+    }
+    .form-title {
+        margin-bottom: 20px;
+    }
+    .form-label {
+        font-weight: bold;
+    }
+    .btn-custom {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+    }
+    .btn-custom1 {
+        margin : 0 10px;
+    }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-container">
+                <h2 class="text-center form-title">프로필 및 비밀번호 업데이트</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    
+                    <!-- 저장 버튼 -->
+                    <div class="d-flex justify-content-center">
+                        <a href="{%url 'login:password_change'%}" class="btn btn-custom btn-custom1">비밀번호 변경</a>
+                        <button type="submit" class="btn btn-custom btn-custom1">저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock contents%}

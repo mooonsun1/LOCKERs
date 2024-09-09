@@ -1,0 +1,165 @@
+{% extends 'llayout.html' %}
+
+{% block title %}Delivery 지점 선택{% endblock title %}
+
+{% block contents %}
+<style>
+    .navigation-bar {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .navigation-bar .btn {
+        width: 80px;
+    }
+
+    .location-selection {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+
+    .location-selection .locations, .location-selection .districts {
+        width: 45%;
+    }
+
+    .locations ul, .districts ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        border: 1px solid #ddd;
+        height: 200px;
+        overflow-y: auto;
+    }
+
+    .locations li, .districts li {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        cursor: pointer;
+    }
+
+    .locations li:hover, .districts li:hover {
+        background-color: #f1f1f1;
+    }
+
+    .locations li.active, .districts li.active {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .next-button {
+        text-align: center;
+        margin-top: 20px;
+    }
+</style>
+
+<div class="navigation-bar">
+    <a href="{% url 'loginhome' %}" class="btn btn-outline-primary">취소</a>
+    <h3>DELIVERY 지점 선택</h3>
+    <a href="{% url 'loginhome' %}" class="btn btn-outline-primary">이전</a>
+</div>
+
+<form method="post" action="{% url 'reservation_delivery:select_delivery_location' %}">
+    {% csrf_token %}
+    <div class="location-selection">
+        <div class="locations">
+            <h5>출발 지점</h5>
+            <ul id="start-city-list">
+                {% for city in locations %}
+                    <li data-city="{{ city }}">{{ city }}</li>
+                {% endfor %}
+            </ul>
+            <h5>구</h5>
+            <ul id="start-district-list">
+                <!-- 선택된 도시의 구 목록이 여기에 나타납니다. -->
+            </ul>
+        </div>
+        <div class="locations">
+            <h5>도착 지점</h5>
+            <ul id="end-city-list">
+                {% for city in locations %}
+                    <li data-city="{{ city }}">{{ city }}</li>
+                {% endfor %}
+            </ul>
+            <h5>구</h5>
+            <ul id="end-district-list">
+                <!-- 선택된 도시의 구 목록이 여기에 나타납니다. -->
+            </ul>
+        </div>
+    </div>
+
+    <input type="hidden" name="start_city" id="start_selected_city">
+    <input type="hidden" name="start_district" id="start_selected_district">
+    <input type="hidden" name="end_city" id="end_selected_city">
+    <input type="hidden" name="end_district" id="end_selected_district">
+
+    <div class="next-button">
+        <button type="submit" class="btn btn-primary">선택 완료</button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startCityList = document.getElementById('start-city-list');
+        const startDistrictList = document.getElementById('start-district-list');
+        const startSelectedCityInput = document.getElementById('start_selected_city');
+        const startSelectedDistrictInput = document.getElementById('start_selected_district');
+
+        const endCityList = document.getElementById('end-city-list');
+        const endDistrictList = document.getElementById('end-district-list');
+        const endSelectedCityInput = document.getElementById('end_selected_city');
+        const endSelectedDistrictInput = document.getElementById('end_selected_district');
+
+        const locationData = {
+            '서울시': ['남산타워', '경복궁', '롯데월드', '북촌 한옥마을', '여의도 한강공원', '서울어린이대공원'],
+            '부산시': ['송도 해상케이블카', '감천 문화마을', '해운대 해수욕장', '광안리 해수욕장', '해동 용궁사', '오륙도 스카이워크'],
+            '제주도': ['카멜리아힐', '휴애리 자연생활공원', '섭지코지', '에코랜드 테마파크', '용두암', '만장굴'],
+            '강원도': ['남이섬', '양양 인구해변', '대관령 양떼목장', '속초 해수욕장', '삼척 장호항', '강릉 경포대'],
+            '전라남도': ['여수 해상케이블카', '여수 유월드 루지 테마파크', '낭만포차거리', '목포 해상케이블카', '죽녹원', '섬진강 기차마을'],
+        };
+
+        function handleCitySelection(cityList, districtList, selectedCityInput, selectedDistrictInput) {
+            cityList.addEventListener('click', function(e) {
+                if (e.target.tagName === 'LI') {
+                    const selectedCity = e.target.getAttribute('data-city');
+                    selectedCityInput.value = selectedCity;
+                    const districts = locationData[selectedCity];
+
+                    const cityItems = cityList.querySelectorAll('li');
+                    cityItems.forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+
+                    e.target.classList.add('active');
+
+                    districtList.innerHTML = '';
+                    if (districts) {
+                        districts.forEach(function(district) {
+                            const li = document.createElement('li');
+                            li.textContent = district;
+                            li.setAttribute('data-district', district);
+                            districtList.appendChild(li);
+                        });
+                    }
+                }
+            });
+
+            districtList.addEventListener('click', function(e) {
+                if (e.target.tagName === 'LI') {
+                    selectedDistrictInput.value = e.target.getAttribute('data-district');
+                    const districtItems = districtList.querySelectorAll('li');
+                    districtItems.forEach(function(item) {
+                        item.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                }
+            });
+        }
+
+        handleCitySelection(startCityList, startDistrictList, startSelectedCityInput, startSelectedDistrictInput);
+        handleCitySelection(endCityList, endDistrictList, endSelectedCityInput, endSelectedDistrictInput);
+    });
+</script>
+{% endblock contents %}

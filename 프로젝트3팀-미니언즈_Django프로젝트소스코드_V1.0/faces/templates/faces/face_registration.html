@@ -1,0 +1,379 @@
+{% extends 'layout.html' %}
+
+{% block title %}얼굴 등록{% endblock title %}
+
+{% block contents %}
+<style>
+    .face-registration-container {
+        background-color: #fff;
+        padding: 20px;
+        width: 100%;  
+        max-width: 1000px;
+        height: 750px;
+        margin: 50px auto;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    .btn-container {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .btn-container .btn {
+        width: auto;
+        padding: 6px 12px;
+    }
+
+    .video-container {
+        position: relative;
+        width: 70%;
+        height: auto;
+    }
+
+    #webcam {
+        width: 100%;
+        border-radius: 10px;
+    }
+
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .instructions, .angle-status, .progress-status {
+        margin-top: 10px;
+        font-size: 18px;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .completion-message {
+        font-size: 36px;
+        font-weight: bold;
+        color: green;
+        margin-top: 20px;
+    }
+
+    .completion-buttons {
+        display: flex;
+        justify-content: space-around;
+        width: 60%;
+        margin-top: 40px;
+    }
+
+    .completion-buttons .btn {
+        padding: 10px 20px;
+        width: 45%;
+    }
+    .btn-custom1 {
+        margin: 10px; 
+        padding: 10px 20px; 
+        font-size: 18px; 
+        width: 150px; 
+    }
+
+    .d-flex.justify-content-center {
+        margin-top: 20px;
+    }
+</style>
+
+<div class="face-registration-container">
+    <div class="btn-container">
+        <a href="{% url 'loginhome' %}" class="btn btn-secondary">취소</a>
+        <a href="javascript:history.back()" class="btn btn-secondary">이전</a>
+    </div>
+
+    {% if face_registered %}
+        <h2 id="instructions">이미 얼굴이 등록되어 있습니다. 재등록 하시겠습니까?</h2>
+        <div class="d-flex justify-content-center">
+            <button id="startRegistrationButton" class="btn btn-warning btn-custom1">재등록하기</button>
+            <button id="proceedPaymentButton" class="btn btn-primary btn-custom1">결제하기</button>
+        </div>
+    {% else %}
+        <h2 id="instructions">등록 시작 버튼을 눌러주세요</h2>
+        <button id="startRegistrationButton" class="btn btn-primary">등록 시작</button>
+    {% endif %}
+
+    <div class="video-container">
+        <video id="webcam" autoplay></video>
+        <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <div class="angle-status" id="angle-status"></div>
+    <div class="progress-status" id="progress-status"></div>
+    <div class="completion-message hidden" id="completion-status">얼굴 등록을 완료하였습니다!</div>
+</div>
+
+<form id="csrfForm" style="display:none;">
+    {% csrf_token %}
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const startButton = document.getElementById('startRegistrationButton');
+        const paymentButton = document.getElementById('proceedPaymentButton');
+        const webcamElement = document.getElementById('webcam');
+        const instructionsElement = document.getElementById('instructions');
+        const angleStatusElement = document.getElementById('angle-status');
+        const progressStatusElement = document.getElementById('progress-status');
+        const completionStatusElement = document.getElementById('completion-status');
+        const canvasElement = document.getElementById('overlayCanvas');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        let faceMesh, camera;
+        let capturedImages = [];
+        let capturedAngles = { yaw: [], pitch: [], roll: [] };
+        let currentAngleType = 'yaw';
+        let pitchOffset = 0;
+
+        const desiredAngles = {
+            yaw: [-60, -40, -20, 0, 20, 40, 60],
+            pitch: [-30, -20, 20, 30],
+            roll: [-60, -40, -20, 20, 40, 60]
+        };
+
+        
+        startButton.addEventListener('click', function() {
+            fetch("{% url 'faces:register_face' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 're-register' })
+            }).then(response => {
+                if (response.ok) {
+                    if (paymentButton){
+                        paymentButton.style.display = 'none';
+                    }
+                    startRegistration();
+                } else {
+                    alert('재등록에 실패했습니다.');
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+            });
+        });
+        
+
+        paymentButton.addEventListener('click', function(){
+            window.location.href = "{% url 'payments:payment_form' %}";
+        });
+
+        
+
+
+        function startRegistration() {
+            startButton.style.display = 'none';
+
+            faceMesh = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMesh.onResults(onResults);
+
+            camera = new Camera(webcamElement, {
+                onFrame: async () => {
+                    await faceMesh.send({ image: webcamElement });
+                },
+                width: 640,
+                height: 480
+            });
+
+            camera.start();
+        }
+
+        function onResults(results) {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+
+                const noseTip = landmarks[1];
+                const leftEye = landmarks[33];
+                const rightEye = landmarks[263];
+                const chinTip = landmarks[199];
+
+                const yaw = calculateYaw(noseTip, chinTip);
+                const pitch = calculatePitch(noseTip, chinTip);
+                const roll = calculateRoll(leftEye, rightEye);
+
+                if (checkAndCaptureAngle(yaw, pitch, roll)) {
+                    const capturedCount = capturedImages.length + 1;
+
+                    progressStatusElement.textContent = `${capturedCount}/17 완료`;
+                    angleStatusElement.textContent = `각도: ${currentAngleType.charAt(0).toUpperCase() + currentAngleType.slice(1)}(${eval(currentAngleType).toFixed(1)}) 인식`;
+
+                    const image = captureImageFromVideo(webcamElement);
+                    capturedImages.push(image);
+
+                    if (capturedImages.length === 17) {
+                        displayCompletionMessage();
+                    }
+                } else {
+                    instructionsElement.textContent = getInstructionMessage(yaw, pitch, roll);
+                }
+            }
+        }
+
+        function displayCompletionMessage() {
+            // 모든 화면 요소 숨기기
+            webcamElement.style.display = 'none';
+            canvasElement.style.display = 'none';
+            instructionsElement.style.display = 'none';
+            angleStatusElement.style.display = 'none';
+            progressStatusElement.style.display = 'none';
+            completionStatusElement.classList.remove('hidden');
+
+            const completionButtonsElement = document.createElement('div');
+            completionButtonsElement.className = 'completion-buttons';
+
+            // "결제하기" 버튼 추가
+            const homeButton = document.createElement('button');
+            homeButton.className = 'btn btn-primary';
+            homeButton.innerText = '결제하기';
+            homeButton.addEventListener('click', closeRegistration);
+            completionButtonsElement.appendChild(homeButton);
+
+            // 완료 상태 요소 뒤에 버튼 추가
+            completionStatusElement.after(completionButtonsElement);
+
+            // 카메라 중지
+            camera.stop();
+        }
+
+
+        function closeRegistration() {
+            sendImagesToServer(capturedImages)
+                .then(() => {
+                    window.location.href = "{% url 'payments:payment_form' %}";  // 홈 화면으로 이동
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+        }
+
+        function captureImageFromVideo(videoElement) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg');
+        }
+
+        function sendImagesToServer(images) {
+            const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+            const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
+
+            return fetch("{% url 'faces:register_face' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ images: images })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("임베딩이 성공적으로 저장되었습니다.");
+                } else {
+                    throw new Error("임베딩 저장에 실패했습니다.");
+                }
+            });
+        }
+
+        function calculateYaw(noseTip, chinTip) {
+            const normalVector = { x: noseTip.x - chinTip.x, y: noseTip.y - chinTip.y, z: noseTip.z - chinTip.z };
+            let yaw = Math.atan2(normalVector.x, normalVector.z) * (180 / Math.PI);
+            return yaw < 0 ? yaw + 180 : yaw - 180;
+        }
+
+        function calculatePitch(noseTip, chinTip) {
+            const normalVector = { x: noseTip.x - chinTip.x, y: noseTip.y - chinTip.y, z: noseTip.z - chinTip.z };
+            let pitch = Math.atan2(-normalVector.y, normalVector.z) * (180 / Math.PI);
+
+            if (pitchOffset === 0) {
+                pitchOffset = pitch;
+            }
+            return pitch - pitchOffset;
+        }
+
+        function calculateRoll(leftEye, rightEye) {
+            let roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x) * (180 / Math.PI);
+            return roll >= 90 ? roll - 180 : roll <= -90 ? roll + 180 : roll;
+        }
+
+        function checkAndCaptureAngle(yaw, pitch, roll) {
+            let targetAngle;
+
+            if (currentAngleType === 'yaw') {
+                targetAngle = desiredAngles.yaw[capturedAngles.yaw.length];
+                if (Math.abs(yaw - targetAngle) < 10) {
+                    capturedAngles.yaw.push(yaw);
+                    if (capturedAngles.yaw.length === desiredAngles.yaw.length) currentAngleType = 'pitch';
+                    return true;
+                }
+            } else if (currentAngleType === 'pitch') {
+                targetAngle = desiredAngles.pitch[capturedAngles.pitch.length];
+                if (Math.abs(pitch - targetAngle) < 10) {
+                    capturedAngles.pitch.push(pitch);
+                    if (capturedAngles.pitch.length === desiredAngles.pitch.length) currentAngleType = 'roll';
+                    return true;
+                }
+            } else if (currentAngleType === 'roll') {
+                targetAngle = desiredAngles.roll[capturedAngles.roll.length];
+                if (Math.abs(roll - targetAngle) < 10) {
+                    capturedAngles.roll.push(roll);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function getInstructionMessage(yaw, pitch, roll) {
+            let instruction = "얼굴을 ";
+
+            if (currentAngleType === 'yaw') {
+                const targetYaw = desiredAngles.yaw[capturedAngles.yaw.length];
+                instruction += yaw > targetYaw ? "왼쪽으로 돌리세요." : "오른쪽으로 돌리세요.";
+            } else if (currentAngleType === 'pitch') {
+                const targetPitch = desiredAngles.pitch[capturedAngles.pitch.length];
+                instruction += pitch > targetPitch ? "위로 올리세요." : "아래로 내리세요.";
+            } else if (currentAngleType === 'roll') {
+                const targetRoll = desiredAngles.roll[capturedAngles.roll.length];
+                instruction += roll > targetRoll ? "오른쪽으로 갸우뚱하세요." : "왼쪽으로 갸우뚱하세요.";
+            }
+
+            return instruction;
+        }
+    });
+</script>
+
+{% endblock contents %}

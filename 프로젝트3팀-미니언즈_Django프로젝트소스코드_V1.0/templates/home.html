@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% load static %}
+{% block title %}Home{% endblock title %}
+{% block contents %}
+<style>
+    .form-container {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        
+    }
+    .d-grid {
+    display: flex;
+    flex-direction: column; /* 버튼 그룹을 세로로 정렬 */
+    align-items: center;
+    margin :auto;
+            }
+    .d-grid a {
+        display: block;
+        width: 250px; /* 버튼 너비 설정 */
+        padding: 15px; /* 버튼 높이를 조정 */
+        font-size: 20px; /* 버튼 텍스트 크기를 조정 */
+        text-align: center;
+            }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-container">
+                <div class="d-grid gap-4  mx-auto my-auto ">
+                    <a href="{% url 'login:login' %}" class="btn btn-primary">로그인</a>
+                    <a href="{% url 'login:create' %}" class="btn btn-primary">회원가입</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock contents %}

@@ -1,0 +1,33 @@
+.locker-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); /* 8x8 그리드 */
+    grid-gap: 10px;
+    margin: 20px;
+}
+
+.locker-button {
+    padding: 20px;
+    text-align: center;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    font-size: 16px;
+    width: 50px;
+    height: 50px;
+}
+
+.locker-available {
+    background-color: #4CAF50; /* 파란색: 사용 가능 */
+}
+
+.locker-occupied {
+    background-color: #F44336; /* 빨간색: 이용 불가 */
+}
+
+.locker-selected {
+    background-color: #9E9E9E; /* 회색: 선택 */
+}
+
+.locker-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}

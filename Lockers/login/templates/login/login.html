@@ -1,0 +1,68 @@
+<!-- templates/account/login.html -->
+{% extends 'layout.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}로그인{% endblock title %}
+{% block contents %}
+{% if errorMessage != None %}
+    <span class="text-danger">{{ errorMessage }}</span>
+{% endif %}
+<style>
+    .form-container {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+    }
+    .form-title {
+        margin-bottom: 20px;
+    }
+    .form-label {
+        font-weight: bold;
+    }
+    .btn-custom {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    .btn-link {
+        color: #007bff;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 10px;
+    }
+    .btn-custom1 {
+        margin : 0 10px;
+    }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-container">
+                <h2 class="text-center form-title">로그인</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    
+                    <!-- 로그인 버튼 -->
+                    <div class="mb-3 row">
+                        <button type="submit" class="btn btn-custom">로그인</button>
+                    </div>
+
+                    <!-- ID 및 비밀번호 찾기 버튼 -->
+                    <div class="d-flex justify-content-center">
+                        <a href="{% url 'login:recovery' %}" class="btn-link btn-custom1">ID 찾기</a>
+                        <a href="{% url 'login:recovery_pw' %}" class="btn-link btn-custom1">비밀번호 찾기</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock contents %}

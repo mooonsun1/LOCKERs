@@ -1,0 +1,59 @@
+<!-- templates/account/login.html -->
+{% extends 'layout.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}홈 화면{% endblock title %}
+{% block contents %}
+{% if errorMessage %}
+    <span class="text-danger">{{ errorMessage }}</span>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    <style>
+        body {
+            background-image: url('/static/imgs/main_img.webp');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+        }
+        .d-grid a {
+            display: block;
+            margin-bottom: 15px;
+            width: 250px;
+            padding: 15px;
+            font-size: 20px;
+            text-align: center;
+        }
+        .form-container {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            display: flex;
+            flex-direction: column;
+            margin-top: 50px;
+
+        }
+    </style>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="form-container">
+                    
+                        <div class="d-grid gap-4  mx-auto ">
+                            <a href="{% url 'reservation_locker:select_location' %}" class="btn btn-primary">Locker예약</a>
+                            <a href="{% url 'reservation_locker:view_locker_reservations' %}" class="btn btn-primary">Locker 조회</a>
+                            <a href="{% url 'reservation_delivery:select_delivery_location' %}" class="btn btn-primary">택배예약</a>
+                            <a href="{% url 'reservation_delivery:view_delivery_reservations' %}" class="btn btn-primary">택배 조회</a>
+                        </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock contents %}

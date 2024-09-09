@@ -1,0 +1,13 @@
+[Unit]
+Description=uWSGI instance to serve myapp
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/DA35-Final-Minions-LOCKERs/Lockers
+Environment="PATH=/home/myenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/myenv/bin/uwsgi --ini /home/ubuntu/DA35-Final-Minions-LOCKERs/Lockers/config/uwsgi/config.ini
+
+[Install]
+WantedBy=multi-user.target

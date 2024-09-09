@@ -1,0 +1,196 @@
+{% extends 'field.html' %}
+
+{% block title %}얼굴 인식{% endblock title %}
+
+{% block contents %}
+<style>
+    .popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 700px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        padding: 20px;
+        display: none;
+        z-index: 1000;
+    }
+
+    .popup video {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 500;
+    }
+
+    #instructions {
+        margin-top: 20px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    #recognizeFaceButton {
+        display: block;
+        margin: 20px auto;
+        padding: 10px 20px;
+        font-size: 18px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    #recognizeFaceButton:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<div>
+    <h2>얼굴 인식</h2>
+    <p>아래 버튼을 눌러 얼굴 인증을 시작하세요.</p>
+    <button id="recognizeFaceButton">얼굴 인증하기</button>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="popup" id="recognizeFacePopup">
+    <video id="webcam" autoplay></video>
+    <canvas id="overlayCanvas"></canvas>
+    <div id="instructions">정면을 바라보세요...</div>
+    <button class="btn btn-secondary" id="closePopupButton">닫기</button>
+</div>
+
+<form id="csrfForm" style="display:none;">
+    {% csrf_token %}
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+
+<script>
+    const recognizeFaceButton = document.getElementById('recognizeFaceButton');
+    const closePopupButton = document.getElementById('closePopupButton');
+    const overlay = document.getElementById('overlay');
+    const recognizeFacePopup = document.getElementById('recognizeFacePopup');
+    const webcamElement = document.getElementById('webcam');
+    const instructionsElement = document.getElementById('instructions');
+
+    let recognized = false;
+    let gender, age, user_id, keyword;
+
+    recognizeFaceButton.addEventListener('click', startRecognition);
+    closePopupButton.addEventListener('click', closePopup);
+
+    async function startRecognition() {
+        overlay.style.display = 'block';
+        recognizeFacePopup.style.display = 'block';
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            webcamElement.srcObject = stream;
+
+            webcamElement.onloadedmetadata = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = webcamElement.videoWidth;
+                canvas.height = webcamElement.videoHeight;
+                const context = canvas.getContext('2d');
+
+                context.drawImage(webcamElement, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
+
+                if (imageData === 'data:,') {
+                    instructionsElement.textContent = "이미지 캡처 실패. 웹캠을 확인하세요.";
+                    return;
+                }
+
+                fetch("{% url 'field:recognize_face' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    instructionsElement.textContent = data.message;
+
+                    if (data.success) {
+                        recognized = true;
+                        gender = data.gender || 'Unknown';
+                        age = data.age || 'Unknown';
+                        user_id = data.user_id || 'Unknown';
+                        keyword = data.keyword;
+                    } else {
+                        recognized = false;
+                    }
+                })
+                .catch(error => {
+                    instructionsElement.textContent = "서버와의 통신 오류.";
+                    recognized = false;
+                });
+            };
+
+        } catch (error) {
+            instructionsElement.textContent = "웹캠을 열 수 없습니다.";
+            recognized = false;
+        }
+    }
+
+    function closePopup() {
+        stopWebcam();
+        overlay.style.display = 'none';
+        recognizeFacePopup.style.display = 'none';
+
+        // If recognition was successful, redirect to the map
+        if (recognized) {
+            redirectToMap(gender, age, user_id, keyword);
+        }
+    }
+
+    function stopWebcam() {
+        const stream = webcamElement.srcObject;
+        if (stream) {
+            const tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+            webcamElement.srcObject = null;
+        }
+    }
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    function redirectToMap(gender, age, user_id, keyword) {
+    console.log(`Starting redirect: Gender: ${gender}, Age: ${age}, User ID: ${user_id}, Keyword: ${keyword}`);
+    
+    fetch(`/field/get_location_prefix/?user_id=${encodeURIComponent(user_id)}`)
+        .then(response => response.json())
+        .then(data => {
+            const location_prefix = data.location_prefix || '';
+            const full_keyword = `${location_prefix} ${keyword}`.trim();
+            
+            console.log(`Final redirect URL: /field/map/?keyword=${encodeURIComponent(full_keyword)}&gender=${encodeURIComponent(gender)}&age=${encodeURIComponent(age)}&user_id=${encodeURIComponent(user_id)}`);
+            window.location.href = `/field/map/?keyword=${encodeURIComponent(full_keyword)}&gender=${encodeURIComponent(gender)}&age=${encodeURIComponent(age)}&user_id=${encodeURIComponent(user_id)}`;
+        })
+        .catch(error => {
+            console.error('Error fetching location prefix:', error);
+        });
+}
+
+
+</script>
+
+{% endblock contents %}

@@ -1,0 +1,81 @@
+{% extends 'layout.html' %}
+{% load django_bootstrap5 %}
+{% load widget_tweaks %}
+
+{% block title %}아이디 찾기{% endblock title %}
+
+{% block contents %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<h2>아이디 찾기</h2>
+<div>
+    
+    <form id="find_id_form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label name="label_name" for="{{ form_pw.name.id_for_label }}">{{ form_pw.name.label }}</label>
+            {{ form_pw.name|add_class:"form-control" }}
+
+        </div>
+        <div class="form-group">
+            <label name="label_email" for="{{ form_pw.email.id_for_label }}">{{ form_pw.email.label }}</label>
+            {{ form_pw.email|add_class:"form-control" }}
+        </div>
+        <small>
+            등록하신 이름과 메일주소가 일치해야 합니다.
+        </small>
+        <div class="text-center">
+            <button id="find_id" name="recovery_id" class="btn btn-primary" style="font-size: 16px;" >
+                &nbsp;&nbsp;아이디 찾기
+            </button>
+        </div>
+        
+        <div style="text-align: center; margin-top: 10px; margin-bottom: -10px;">
+            <div id="loading"></div>
+        </div>
+        
+        
+        <br>
+        <span style="color:gray; font-size: 14px;">&middot;&nbsp;비밀번호를 잊으셨나요?</span>
+        <a style="text-decoration:underline; color:black; font-size: 14px;" href="{% url 'login:recovery_pw' %}">
+            비밀번호 찾기
+        </a>
+    </form>
+
+    <div id="result_id"></div>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#find_id').click(function (event) {
+                event.preventDefault();  // 기본 폼 제출 방지
+
+                var name = $("#{{ form_pw.name.id_for_label }}").val();
+                var email = $("#{{ form_pw.email.id_for_label }}").val();
+
+                $.ajax({
+                    type: "POST",
+                    url: "/login/recovery/find/",
+                    dataType: "json",
+                    data: {
+                        'name': name,
+                        'email': email,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}',
+                    },
+                    success: function (response) {
+                        $('#result_id').html(
+                            '<div id="result_id"><hr><div><span>입력된 정보로 가입된 아이디는 </span><span id="result_id">' +
+                                response.result_id + '</span><span> 입니다.</span></div><hr></div>'
+                        );
+                    },
+                    error: function () {
+                        if (name == "" || email == "") {
+                            alert('이름과 이메일을 입력해주세요.');
+                        } else {
+                            alert('입력하신 정보가 일치하지 않거나 존재하지 않습니다.');
+                        }
+                    },
+                });
+            });
+        });
+    </script>
+</div>
+{% endblock contents %}

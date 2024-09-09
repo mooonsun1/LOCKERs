@@ -1,0 +1,43 @@
+{% extends 'llayout.html' %}
+
+{% block title %}예약 완료{% endblock title %}
+
+{% block contents %}
+<style>
+    .reservation-info {
+        margin: 20px;
+        padding: 20px;
+        border: 1px solid #ddd;
+    }
+    .btn-container {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+</style>
+
+
+{% if reservation %}
+<div class="reservation-info">
+    <h3>예약 완료</h3>
+    <p>지점: {{ reservation.start_location.city }} {{ reservation.start_location.district }}</p>
+    <p>보관함 번호: {{ reservation.start_locker.locker_number }}</p>
+    <p>시작: {{ reservation.start_datetime }}</p>
+    <p>도착: {{ reservation.end_datetime }}</p>
+</div>
+<div class="btn-container">
+    <button id="registerFaceButton" class="btn btn-primary">얼굴 등록하기</button>
+    <a href="{% url 'loginhome' %}" class="btn btn-secondary">홈으로 돌아가기</a>
+</div>
+{% else %}
+<p>예약된 정보가 없습니다.</p>
+{% endif %}
+
+<script>
+    document.getElementById('registerFaceButton').addEventListener('click', function() {
+        window.location.href = "{% url 'faces:register_face' %}";
+    });
+</script>
+
+{% endblock contents %}

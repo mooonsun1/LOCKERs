@@ -1,0 +1,335 @@
+{% extends 'llayout.html' %}
+
+{% block title %}Delivery 예약 - 날짜/시간 선택{% endblock title %}
+
+{% block contents %}
+<style>
+    .navigation-bar {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .navigation-bar .btn {
+        width: 80px;
+    }
+
+    .calendar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 400px;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .calendar-header h5 {
+        margin: 0;
+    }
+
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .calendar-days div {
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 50%;
+        border: 1px solid transparent;
+    }
+
+    .calendar-days div.today {
+        border-color: grey;
+    }
+
+    .calendar-days div.selected {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .calendar-days div.range {
+        background-color: lightgrey;
+        color: black;
+    }
+
+    .time-selection {
+        display: none;
+        justify-content: center;
+        margin-top: 20px;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        background-color: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .time-selection.active {
+        display: flex;
+    }
+
+    .time-selection h5 {
+        margin-bottom: 10px;
+    }
+
+    .time-selection ul {
+        display: flex;
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        overflow-x: auto;
+        width: 100%;
+        color: #007bff;
+    }
+
+    .time-selection li {
+        padding: 10px 15px;
+        cursor: pointer;
+        background-color: #e9ecef;
+        margin-right: 5px;
+        border-radius: 5px;
+        white-space: nowrap;
+        text-align: center;
+        flex-shrink: 0;
+        margin-bottom: 20px;
+    }
+
+    .time-selection li.selected {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .next-button {
+        text-align: center;
+        margin-top: 20px;
+    }
+</style>
+
+<div class="navigation-bar">
+    <a href="{% url 'loginhome' %}" class="btn btn-outline-primary">취소</a>
+    <h3>DELIVERY 예약</h3>
+    <a href="javascript:history.back()" class="btn btn-outline-primary">이전</a>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <input type="hidden" name="start_datetime" id="start_datetime">
+    <input type="hidden" name="end_datetime" id="end_datetime">
+
+    <div class="calendar">
+        <div class="calendar-header">
+            <button type="button" onclick="changeMonth(-1)">&#9664;</button>
+            <h5 id="calendar-month-year"></h5>
+            <button type="button" onclick="changeMonth(1)">&#9654;</button>
+        </div>
+        <div class="calendar-days" id="calendar-days"></div>
+    </div>
+
+    <div class="time-selection" id="start-time-selection">
+        <h5>출발 시간</h5>
+        <ul id="start-time-list"></ul>
+    </div>
+
+    <div class="time-selection" id="end-time-selection">
+        <h5>도착 시간</h5>
+        <ul id="end-time-list"></ul>
+    </div>
+
+    <div class="next-button">
+        <button type="submit" class="btn btn-primary" onclick="submitForm()">선택 완료</button>
+    </div>
+</form>
+
+<script>
+    const today = new Date();
+    let selectedStartDate = null;
+    let selectedEndDate = null;
+    let selectedStartTime = null;
+    let selectedEndTime = null;
+    let currentMonth = today.getMonth();
+    let currentYear = today.getFullYear();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderCalendar(currentMonth, currentYear);
+    });
+
+    function renderCalendar(month, year) {
+        const calendarDays = document.getElementById('calendar-days');
+        const monthYear = document.getElementById('calendar-month-year');
+        monthYear.innerText = `${year}년 ${month + 1}월`;
+
+        calendarDays.innerHTML = '';
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            calendarDays.appendChild(document.createElement('div'));
+        }
+
+        for (let date = 1; date <= lastDate; date++) {
+            const dayElement = document.createElement('div');
+            const currentDate = new Date(year, month, date);
+
+            dayElement.innerText = date;
+
+            if (currentDate.toDateString() === today.toDateString()) {
+                dayElement.classList.add('today');
+            }
+
+            if (currentDate < today.setHours(0, 0, 0, 0)) {
+                dayElement.style.color = 'lightgrey';
+            } else {
+                dayElement.addEventListener('click', function () {
+                    selectDate(currentDate);
+                });
+            }
+
+            calendarDays.appendChild(dayElement);
+        }
+
+        updateCalendarStyles();
+    }
+
+    function selectDate(date) {
+        if (!selectedStartDate) {
+            selectedStartDate = date;
+            selectedEndDate = null;
+            selectedStartTime = null;
+            selectedEndTime = null;
+            document.getElementById('start-time-selection').classList.add('active');
+            document.getElementById('end-time-selection').classList.remove('active');
+            renderTimeList('start-time-list');
+        } else if (!selectedEndDate && date >= selectedStartDate) {
+            selectedEndDate = date;
+            document.getElementById('end-time-selection').classList.add('active');
+            renderTimeList('end-time-list');
+        }
+
+        updateCalendarStyles();
+    }
+
+    function renderTimeList(listId) {
+        const timeList = document.getElementById(listId);
+        timeList.innerHTML = ''; // 초기화
+
+        for (let hour = 0; hour < 24; hour++) {
+            for (let minute = 0; minute < 60; minute += 30) {
+                const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                const li = document.createElement('li');
+                li.innerText = timeString;
+
+                li.addEventListener('click', function() {
+                    if (listId === 'start-time-list') {
+                        selectedStartTime = timeString;
+                        document.getElementById('end-time-selection').classList.add('active');
+                    } else if (listId === 'end-time-list') {
+                        if (selectedStartDate && selectedStartTime) {
+                            const startDateTime = new Date(`${selectedStartDate.toISOString().split('T')[0]}T${selectedStartTime}:00`);
+                            const endDateTime = new Date(`${selectedEndDate.toISOString().split('T')[0]}T${timeString}:00`);
+                            if (endDateTime - startDateTime >= 30 * 60 * 1000) {
+                                selectedEndTime = timeString;
+                            } else {
+                                alert('종료 시간은 시작 시간보다 최소 30분 이상 차이나야 합니다.');
+                            }
+                        } else {
+                            selectedEndTime = timeString;
+                        }
+                    }
+                    updateTimeListStyles(listId, timeString);
+                });
+
+                timeList.appendChild(li);
+            }
+        }
+    }
+
+    function updateTimeListStyles(listId, selectedTime) {
+        const timeListItems = document.getElementById(listId).children;
+
+        for (let li of timeListItems) {
+            li.classList.remove('selected');
+
+            if (li.innerText === selectedTime) {
+                li.classList.add('selected');
+            }
+        }
+    }
+
+    function updateCalendarStyles() {
+        const calendarDays = document.getElementById('calendar-days').children;
+
+        for (let dayElement of calendarDays) {
+            const day = parseInt(dayElement.innerText);
+
+            if (!isNaN(day)) {
+                const currentDate = new Date(currentYear, currentMonth, day);
+
+                dayElement.classList.remove('selected', 'range');
+
+                if (selectedStartDate && currentDate.getTime() === selectedStartDate.getTime()) {
+                    dayElement.classList.add('selected');
+                } else if (selectedEndDate && currentDate.getTime() === selectedEndDate.getTime()) {
+                    dayElement.classList.add('selected');
+                } else if (selectedStartDate && selectedEndDate && currentDate > selectedStartDate && currentDate < selectedEndDate) {
+                    dayElement.classList.add('range');
+                }
+            }
+        }
+    }
+
+    function changeMonth(direction) {
+        currentMonth += direction;
+
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+
+        renderCalendar(currentMonth, currentYear);
+    }
+
+    function submitForm() {
+    if (selectedStartDate && selectedStartTime) {
+        const startDateTime = new Date(selectedStartDate.getFullYear(), selectedStartDate.getMonth(), selectedStartDate.getDate(), ...selectedStartTime.split(':').map(Number));
+        document.getElementById('start_datetime').value = startDateTime.toISOString();
+
+        console.log(`Submitted start datetime: ${startDateTime.toISOString()}`);
+    }
+
+    if (selectedEndDate && selectedEndTime) {
+        const endDateTime = new Date(selectedEndDate.getFullYear(), selectedEndDate.getMonth(), selectedEndDate.getDate(), ...selectedEndTime.split(':').map(Number));
+        document.getElementById('end_datetime').value = endDateTime.toISOString();
+
+        console.log(`Submitted end datetime: ${endDateTime.toISOString()}`);
+    }
+
+    if (!selectedEndDate || !selectedEndTime) {
+        alert('종료 날짜와 시간을 선택하세요.');
+        return;
+    }
+
+    document.forms[0].submit();
+}
+
+</script>
+{% endblock contents %}

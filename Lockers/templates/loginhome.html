@@ -1,0 +1,48 @@
+{% extends 'llayout.html' %}
+
+{% block title %}홈 화면{% endblock title %}
+
+{% block contents %}
+{% if errorMessage != None %}
+    <span class="text-danger">{{ errorMessage }}</span>
+{% endif %}
+<form method="post">
+    {% csrf_token %}
+    <style>
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 80px;
+        }
+        .btn-group a {
+            display: block;
+            margin-bottom: 20px;
+            width: 200px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 40px;
+            font-size: 30pt;
+            color: blue;
+            text-align: center;
+        }
+        .logout-btn {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+
+    <h1>LOCKERs</h1>
+    <div class="btn-group">
+        <a href="#" class="btn btn-primary">회원정보수정</a>
+        <a href="{% url 'reservation_locker:select_location' %}" class="btn btn-primary">Locker예약</a>
+        <a href="#" class="btn btn-primary">Locker조회</a>
+        <a href="{% url 'reservation_delivery:select_delivery_location' %}" class="btn btn-primary">택배예약</a>
+        <a href="#" class="btn btn-primary">택배조회</a>
+    </div>
+    <div class="logout-btn">
+        <a href="{% url 'login:logout' %}" class="btn btn-danger">로그아웃</a>
+    </div>
+</form>
+{% endblock contents %}

@@ -1,0 +1,37 @@
+<!-- templates/payments/payment_success.html -->
+{% extends 'llayout.html' %}
+
+{% block title %}결제 완료{% endblock %}
+
+{% block contents %}
+    <div class="container text-center">
+        <h1 class="my-4">결제가 완료되었습니다!</h1>
+        <p class="lead">결제가 성공적으로 처리되었습니다. 감사합니다.</p>
+
+        <div class="text-center">
+            <a href="{% url 'loginhome' %}" class="btn btn-primary btn-lg">홈으로 돌아가기</a>
+        </div>
+    </div>
+
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: #28a745;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+    </style>
+{% endblock %}

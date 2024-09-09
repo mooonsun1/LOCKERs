@@ -1,0 +1,187 @@
+{% extends 'llayout.html' %}
+
+{% block title %}Delivery 보관함 선택{% endblock title %}
+
+{% block contents %}
+<style>
+    .navigation-bar {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+    .navigation-bar .btn {
+        width: 80px;
+    }
+
+    .legend {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        border: 1px solid #000;
+    }
+
+    .available {
+        background-color: #4CAF50;
+    }
+
+    .occupied {
+        background-color: #F44336;
+    }
+
+    .selected {
+        background-color: #9E9E9E;
+    }
+
+    .locker-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        grid-gap: 10px;
+        margin: 20px;
+    }
+
+    .locker-button {
+        padding: 20px;
+        text-align: center;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        font-size: 16px;
+        width: 50px;
+        height: 50px;
+    }
+
+    .locker-available {
+        background-color: #4CAF50;
+    }
+
+    .locker-occupied {
+        background-color: #F44336;
+    }
+
+    .locker-selected {
+        background-color: #9E9E9E;
+    }
+
+    .locker-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .reserve-button {
+        text-align: center;
+        margin-top: 20px;
+        display: none;
+    }
+
+    .end-locker-section {
+        display: none;
+        margin-top: 40px;
+    }
+</style>
+
+<div class="navigation-bar">
+    <a href="{% url 'loginhome' %}" class="btn btn-outline-primary">취소</a>
+    <h3>DELIVERY 보관함 선택</h3>
+    <a href="{% url 'loginhome' %}" class="btn btn-outline-primary">이전</a>
+</div>
+
+<h4>출발 시간: {{ start_datetime }}</h4>
+<h4>도착 시간: {{ end_datetime }}</h4>
+
+<div class="legend">
+    <div class="legend-item">
+        <div class="legend-color available"></div>
+        <span>이용 가능</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color occupied"></div>
+        <span>이용 불가</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color selected"></div>
+        <span>선택</span>
+    </div>
+</div>
+
+<h4>출발 지점 보관함</h4>
+<form method="post" action="{% url 'reservation_delivery:select_delivery_locker' %}" id="locker-form">
+    {% csrf_token %}
+    <div class="locker-grid" id="start-lockers">
+        {% for locker, status in start_locker_statuses %}
+        <button 
+            type="button" 
+            data-locker-id="{{ locker.locker_id }}"
+            class="locker-button 
+                   {% if status == 'occupied' %}locker-occupied{% elif status == 'selected' %}locker-selected{% else %}locker-available{% endif %}"
+            {% if status == 'occupied' %}disabled{% endif %}>
+            {{ locker.locker_number }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <div class="end-locker-section" id="end-locker-section">
+        <h4>도착 지점 보관함</h4>
+        <div class="locker-grid" id="end-lockers">
+            {% for locker, status in end_locker_statuses %}
+            <button 
+                type="button" 
+                data-locker-id="{{ locker.locker_id }}"
+                class="locker-button 
+                       {% if status == 'occupied' %}locker-occupied{% elif status == 'selected' %}locker-selected{% else %}locker-available{% endif %}"
+                {% if status == 'occupied' %}disabled{% endif %}>
+                {{ locker.locker_number }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="reserve-button" id="reserve-button">
+        <input type="hidden" name="start_locker_id" id="selected-start-locker-id">
+        <input type="hidden" name="end_locker_id" id="selected-end-locker-id">
+        <input type="hidden" name="start_location_id" value="{{ start_location_id }}">
+        <input type="hidden" name="end_location_id" value="{{ end_location_id }}">
+        <button type="submit" class="btn btn-primary">예약하기</button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startLockerButtons = document.querySelectorAll('#start-lockers .locker-button');
+        const endLockerButtons = document.querySelectorAll('#end-lockers .locker-button');
+        const reserveButtonDiv = document.getElementById('reserve-button');
+        const selectedStartLockerInput = document.getElementById('selected-start-locker-id');
+        const selectedEndLockerInput = document.getElementById('selected-end-locker-id');
+        const endLockerSection = document.getElementById('end-locker-section');
+
+        startLockerButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                startLockerButtons.forEach(btn => btn.classList.remove('locker-selected'));
+                this.classList.add('locker-selected');
+                selectedStartLockerInput.value = this.getAttribute('data-locker-id');
+                endLockerSection.style.display = 'block';  // 출발 지점 보관함 선택 후 도착 지점 보관함 표시
+            });
+        });
+
+        endLockerButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                endLockerButtons.forEach(btn => btn.classList.remove('locker-selected'));
+                this.classList.add('locker-selected');
+                selectedEndLockerInput.value = this.getAttribute('data-locker-id');
+                reserveButtonDiv.style.display = 'block';  // 도착 지점 보관함 선택 후 예약 버튼 표시
+            });
+        });
+    });
+</script>
+{% endblock contents %}
